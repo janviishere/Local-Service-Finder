@@ -6,6 +6,9 @@ import Home from './pages/Home'
 import About from './pages/About'
 import Services from './pages/Services'
 import Booking from './pages/Booking'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Dashboard from './pages/Dashboard'
 
 function ScrollProgress() {
   const barRef = useRef(null);
@@ -42,6 +45,9 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/services" element={<Services />} />
           <Route path="/booking" element={<Booking />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </main>
       <Footer />

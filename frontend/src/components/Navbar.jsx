@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Wrench } from 'lucide-react';
+import { Menu, X, Wrench, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 const navLinks = [
@@ -15,6 +16,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen]         = useState(false);
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 60);
@@ -78,21 +80,43 @@ export default function Navbar() {
 
         {/* CTA Buttons */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            to="/booking"
-            className={cn(
-              'text-sm font-semibold transition-colors',
-              isDark ? 'text-white/80 hover:text-white' : 'text-deep-navy/70 hover:text-deep-navy'
-            )}
-          >
-            Log in
-          </Link>
-          <Link
-            to="/booking"
-            className="bg-royal-blue text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-md hover:shadow-royal-blue/30"
-          >
-            Book Now
-          </Link>
+          {user ? (
+            <>
+              <Link
+                to="/dashboard"
+                className={cn(
+                  'text-sm font-semibold transition-colors flex items-center gap-1',
+                  isDark ? 'text-white/80 hover:text-white' : 'text-deep-navy/70 hover:text-deep-navy'
+                )}
+              >
+                <User size={16} /> Dashboard
+              </Link>
+              <button
+                onClick={logout}
+                className="bg-royal-blue/10 text-royal-blue border border-royal-blue/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-royal-blue hover:text-white transition-colors"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className={cn(
+                  'text-sm font-semibold transition-colors',
+                  isDark ? 'text-white/80 hover:text-white' : 'text-deep-navy/70 hover:text-deep-navy'
+                )}
+              >
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className="bg-royal-blue text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-md hover:shadow-royal-blue/30"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Toggle */}
@@ -132,13 +156,40 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="border-t border-slate-200 my-1" />
-              <Link
-                to="/booking"
-                onClick={() => setIsOpen(false)}
-                className="block w-full text-center bg-royal-blue text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-md"
-              >
-                Book Now
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-xl font-semibold text-sm text-deep-navy hover:bg-slate-100 transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => { logout(); setIsOpen(false); }}
+                    className="block w-full text-center bg-red-50 text-red-600 px-4 py-3 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
+                  >
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-xl font-semibold text-sm text-deep-navy hover:bg-slate-100 transition-colors"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={() => setIsOpen(false)}
+                    className="block w-full text-center bg-royal-blue text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-md"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
