@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@theme {
+  --color-deep-navy: #0F172A;
+  --color-royal-blue: #2563EB;
+  --color-emerald: #10B981;
+  --color-warm-white: #F8FAFC;
+  --color-soft-gray: #E5E7EB;
+  --color-accent-gold: #FBBF24;
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-warm-white);
+    color: var(--color-deep-navy);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .glassmorphism {
+    background-color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+  .glassmorphism-dark {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(135deg, var(--color-royal-blue), var(--color-emerald));
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Hero background animated gradient (fallback when video not loaded) */
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-gradient-bg {
+  background: linear-gradient(-45deg, #0F172A, #1e3a5f, #0F172A, #0d2a1f);
+  background-size: 400% 400%;
+  animation: gradient-shift 12s ease infinite;
+}
+
+/* Floating dots animation */
+@keyframes float-up {
+  0%   { transform: translateY(0px) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.4; }
+  90%  { opacity: 0.2; }
+  100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: float-up linear infinite;
+}
+
+/* Ripple button effect */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+.btn-ripple:active::after {
+  transform: scale(3);
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Scroll progress bar */
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(to right, #2563EB, #10B981);
+  z-index: 9999;
+  transition: width 0.1s ease;
+}
