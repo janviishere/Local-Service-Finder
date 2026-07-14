@@ -1,115 +1,363 @@
-import { motion } from 'framer-motion';
-import { MapPin, Star, Shield, Search } from 'lucide-react';
-import { cn } from '../lib/utils';
-
-const categories = ["All", "Cleaning", "Electrical", "Plumbing", "Painting", "Carpentry", "AC Repair"];
-
-const professionals = [
-  { name: "Michael Chen", role: "Master Electrician", rating: "4.9", jobs: "340", exp: "12 years", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150&h=150", available: true },
-  { name: "Sarah Jenkins", role: "Expert Plumber", rating: "5.0", jobs: "512", exp: "8 years", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150&h=150", available: true },
-  { name: "David Rodriguez", role: "HVAC Specialist", rating: "4.8", jobs: "289", exp: "15 years", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150&h=150", available: false },
-  { name: "Emily Watson", role: "Interior Painter", rating: "4.9", jobs: "156", exp: "5 years", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150&h=150", available: true }
-];
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../context/ThemeContext';
+import { useLocationContext } from '../context/LocationContext';
+import { api } from '../lib/api';
+import ServiceCard from '../components/ServiceCard';
+import { Filter, Search, Check, MapPin, X } from 'lucide-react';
 
 export default function Services() {
-  return (
-    <div className="w-full pt-32 pb-24 bg-warm-white">
-      <div className="container mx-auto px-4 md:px-8">
+  const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const routerLocation = useLocation();
+  const queryParams = new URLSearchParams(routerLocation.search);
+  
+  const [categoryFilter, setCategoryFilter] = useState(queryParams.get('category') || '');
+  const [searchQuery, setSearchQuery] = useState(queryParams.get('search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  
+  const { isDark } = useTheme();
+  const { location, setLocation } = useLocationContext();
+
+  // Fetch Categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await api.get('/categories');
+        setCategories(data);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Fetch Services
+  useEffect(() => {
+    const fetchServices = async () => {
+      setLoading(true);
+      try {
+        let url = '/services?';
+        if (categoryFilter) url += `category=${categoryFilter}&`;
+        if (location?.name) url += `city=${encodeURIComponent(location.name)}&`;
+        if (debouncedSearch) url += `search=${encodeURIComponent(debouncedSearch)}&`;
+        if (minPrice) url += `minPrice=${minPrice}&`;
+        if (maxPrice) url += `maxPrice=${maxPrice}&`;
+        if (minRating) url += `minRating=${minRating}&`;
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold font-heading text-deep-navy mb-4">Our Services</h1>
-            <p className="text-deep-navy/60 text-lg">Browse our comprehensive list of premium local services.</p>
-          </motion.div>
-          <div className="w-full md:w-auto overflow-x-auto pb-2 flex gap-2 hide-scrollbar">
-            {categories.map((cat, idx) => (
-              <button 
-                key={idx}
-                className={cn(
-                  "px-5 py-2.5 rounded-full font-medium whitespace-nowrap transition-all text-sm",
-                  idx === 0 ? "bg-deep-navy text-white shadow-lg" : "bg-white text-deep-navy hover:bg-royal-blue/10 border border-deep-navy/5"
-                )}
+        const data = await api.get(url);
+        setServices(data);
+      } catch (error) {
+        console.error("Failed to fetch services", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchServices();
+  }, [categoryFilter, location, debouncedSearch, minPrice, maxPrice, minRating]);
+
+  const clearFilters = () => {
+    setCategoryFilter('');
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setMinPrice('');
+    setMaxPrice('');
+    setMinRating('');
+    // Optionally clear location: setLocation(null);
+  };
+
+  const activeCategoryName = categoryFilter 
+    ? categories.find(c => c.slug === categoryFilter)?.name 
+    : 'All Services';
+
+  // Sidebar Component for reuse in desktop & mobile
+  const FiltersSidebar = () => (
+    <div className="flex flex-col gap-8">
+      {/* Search Bar (Mobile only inside filter, desktop has its own) */}
+      <div className="md:hidden">
+        <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-3 block">Search</label>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="What do you need?" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 rounded-xl border bg-card border-border focus:outline-none focus:border-blue-500 transition-colors shadow-sm text-sm"
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <label className="text-xs font-bold uppercase tracking-wider text-secondary">Categories</label>
+          {categoryFilter && (
+            <button onClick={() => setCategoryFilter('')} className="text-xs text-blue-500 hover:text-blue-600 font-semibold">
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setCategoryFilter('')}
+            className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all ${
+              categoryFilter === '' 
+                ? 'bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 font-bold border' 
+                : 'bg-transparent border-transparent text-secondary hover:bg-card border'
+            }`}
+          >
+            <span className="text-sm">All Categories</span>
+            {categoryFilter === '' && <Check size={16} />}
+          </button>
+
+          {categories.map(cat => {
+            const isActive = categoryFilter === cat.slug;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setCategoryFilter(cat.slug)}
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all ${
+                  isActive 
+                    ? 'bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 font-bold border shadow-sm' 
+                    : 'bg-transparent border-transparent text-secondary hover:bg-card border hover:shadow-sm'
+                }`}
               >
-                {cat}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg opacity-80">{cat.icon}</span>
+                  <span className="text-sm">{cat.name}</span>
+                </div>
+                {isActive && <Check size={16} />}
               </button>
-            ))}
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-3 block">Price Range (₹)</label>
+        <div className="flex items-center gap-2">
+          <input 
+            type="number" 
+            placeholder="Min" 
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border bg-card border-border focus:outline-none focus:border-blue-500 text-sm"
+          />
+          <span className="text-secondary">-</span>
+          <input 
+            type="number" 
+            placeholder="Max" 
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border bg-card border-border focus:outline-none focus:border-blue-500 text-sm"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-3 block">Minimum Rating</label>
+        <select 
+          value={minRating}
+          onChange={(e) => setMinRating(e.target.value)}
+          className="w-full px-3 py-3 rounded-xl border bg-card border-border focus:outline-none focus:border-blue-500 text-sm"
+        >
+          <option value="">Any Rating</option>
+          <option value="4.5">4.5 & Above</option>
+          <option value="4.0">4.0 & Above</option>
+          <option value="3.5">3.5 & Above</option>
+          <option value="3.0">3.0 & Above</option>
+        </select>
+      </div>
+
+      {location?.name && (
+        <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+          <label className="text-xs font-bold uppercase tracking-wider text-blue-500 mb-2 block">Current Location</label>
+          <div className="flex items-center gap-2 text-primary font-medium">
+            <MapPin size={16} className="text-blue-500" />
+            {location.name}
           </div>
         </div>
+      )}
+    </div>
+  );
 
-        {/* Masonry Gallery Placeholder */}
-        <section className="mb-32">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
-            {/* Main large item */}
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="md:col-span-2 md:row-span-2 rounded-[2rem] overflow-hidden relative group cursor-pointer">
-              <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80" alt="Plumbing" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/80 to-transparent flex items-end p-8">
-                <div>
-                  <h3 className="text-white text-2xl font-bold font-heading mb-2">Premium Plumbing</h3>
-                  <p className="text-white/80">Expert repairs and installations</p>
-                </div>
-              </div>
-            </motion.div>
+  return (
+    <div className="min-h-screen pt-24 pb-24 bg-primary text-primary transition-colors duration-300">
+      
+      {/* Hero Header */}
+      <div className="bg-alt border-b border-border mb-8 pb-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-2">
+                {activeCategoryName}
+              </h1>
+              <p className="text-secondary text-lg">
+                {services.length} {services.length === 1 ? 'professional' : 'professionals'} available 
+                {location?.name && <span> in <strong className="text-primary">{location.name}</strong></span>}
+              </p>
+            </div>
             
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="rounded-[2rem] overflow-hidden relative group cursor-pointer">
-              <img src="https://images.unsplash.com/photo-1527515637-edbc25a3a1f8?auto=format&fit=crop&q=80" alt="Cleaning" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/80 to-transparent flex items-end p-6">
-                <h3 className="text-white text-xl font-bold font-heading">Deep Cleaning</h3>
+            {/* Desktop Search Bar */}
+            <div className="hidden md:block w-full max-w-md">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search for any service..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl border bg-card border-border focus:outline-none focus:border-blue-500 transition-all shadow-sm focus:shadow-md text-base"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full"
+                  >
+                    <X size={16} className="text-slate-500" />
+                  </button>
+                )}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="rounded-[2rem] overflow-hidden relative group cursor-pointer">
-              <img src="https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&q=80" alt="Electrical" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/80 to-transparent flex items-end p-6">
-                <h3 className="text-white text-xl font-bold font-heading">Electrical Systems</h3>
-              </div>
-            </motion.div>
+            {/* Mobile Filter Toggle */}
+            <button 
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="md:hidden flex items-center justify-center gap-2 w-full py-3 bg-card border border-border rounded-xl font-bold shadow-sm"
+            >
+              <Filter size={18} /> Filters & Search
+            </button>
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* Featured Professionals */}
-        <section>
-          <div className="mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-heading text-deep-navy mb-4">Featured Professionals</h2>
-            <p className="text-deep-navy/60">Top-rated experts ready to help you today.</p>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row gap-8">
+        
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:block w-72 shrink-0">
+          <div className="sticky top-28 p-6 rounded-3xl border bg-card border-border shadow-sm">
+            <FiltersSidebar />
           </div>
+        </aside>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {professionals.map((pro, idx) => (
+        {/* Mobile Sidebar Overlay */}
+        <AnimatePresence>
+          {isMobileFiltersOpen && (
+            <>
               <motion.div 
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="bg-white rounded-3xl p-6 border border-deep-navy/5 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
+              />
+              <motion.div 
+                initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                className="fixed inset-y-0 left-0 w-4/5 max-w-sm bg-primary z-50 p-6 overflow-y-auto border-r border-border md:hidden shadow-2xl"
               >
-                <div className="relative mb-6">
-                  <div className="w-24 h-24 rounded-full overflow-hidden mx-auto border-4 border-warm-white shadow-lg">
-                    <img src={pro.img} alt={pro.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className={cn(
-                    "absolute top-0 right-1/4 w-4 h-4 rounded-full border-2 border-white",
-                    pro.available ? "bg-emerald" : "bg-soft-gray"
-                  )} />
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-black">Filters</h2>
+                  <button onClick={() => setIsMobileFiltersOpen(false)} className="p-2 bg-card rounded-full border border-border">
+                    <X size={20} />
+                  </button>
                 </div>
-                
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold font-heading text-deep-navy mb-1">{pro.name}</h3>
-                  <p className="text-royal-blue text-sm font-medium mb-3">{pro.role}</p>
-                  <div className="flex items-center justify-center gap-4 text-sm text-deep-navy/60">
-                    <span className="flex items-center gap-1"><Star size={14} className="text-accent-gold" /> {pro.rating}</span>
-                    <span>{pro.jobs} jobs</span>
-                  </div>
-                </div>
-
-                <button className="w-full py-3 rounded-xl bg-warm-white text-deep-navy font-bold hover:bg-royal-blue hover:text-white transition-colors">
-                  Hire Now
+                <FiltersSidebar />
+                <button 
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="w-full mt-8 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30"
+                >
+                  Show {services.length} Results
                 </button>
               </motion.div>
-            ))}
-          </div>
-        </section>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content (Grid) */}
+        <main className="flex-1 min-w-0">
+          
+          {/* Active Filter Pills */}
+          {(categoryFilter || searchQuery) && (
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <span className="text-sm text-secondary">Active filters:</span>
+              {categoryFilter && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-semibold border border-blue-500/20">
+                  {activeCategoryName}
+                  <button onClick={() => setCategoryFilter('')} className="hover:bg-blue-500/20 rounded-full p-0.5"><X size={14} /></button>
+                </span>
+              )}
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-semibold border border-blue-500/20">
+                  "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')} className="hover:bg-blue-500/20 rounded-full p-0.5"><X size={14} /></button>
+                </span>
+              )}
+              <button onClick={clearFilters} className="text-sm text-secondary hover:text-primary underline underline-offset-2 ml-2">
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-card border border-border rounded-2xl h-80">
+                  <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded-t-2xl" />
+                  <div className="p-5 space-y-4">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
+                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : services.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="h-full"
+                >
+                  <ServiceCard service={service} isDark={isDark} />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-24 bg-card border border-border border-dashed rounded-3xl shadow-sm">
+              <div className="w-20 h-20 bg-alt rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search size={32} className="text-slate-400" />
+              </div>
+              <h3 className="text-2xl font-bold mb-3">No services found</h3>
+              <p className="text-secondary max-w-sm mx-auto mb-8">
+                We couldn't find any services matching your criteria. Try adjusting your filters or search in a different area.
+              </p>
+              <button 
+                onClick={clearFilters}
+                className="px-6 py-3 bg-primary border border-border rounded-full font-bold hover:bg-alt transition-colors shadow-sm"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
+        </main>
 
       </div>
     </div>

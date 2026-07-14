@@ -13,28 +13,64 @@ model User {
   email     String    @unique
   password  String
   role      String    @default("customer") // 'customer' or 'provider'
+  phone     String?
+  avatar    String?
+  address   String?
+  city      String?
+  latitude  Float?
+  longitude Float?
   createdAt DateTime  @default(now())
   
-  services  Service[] // For providers
-  bookings  Booking[] // For customers
+  services     Service[]     // For providers
+  bookings     Booking[]     // For customers
+  reviews      Review[]      // For customers
+  favorites    Favorite[]    // Favorited services
+  sentMessages    ChatMessage[] @relation("SentMessages")
+  receivedMessages ChatMessage[] @relation("ReceivedMessages")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  icon        String?
+  description String?
+  image       String?
+  services    Service[]
 }
 
 model Service {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  price       String
+  id               Int       @id @default(autoincrement())
+  title            String
+  description      String?
+  price            String
+  image            String?
+  portfolioImages  String?   // JSON array of image URLs
+  rating           Float     @default(0)
+  reviewCount      Int       @default(0)
+  duration         String?
+  city             String?
+  isActive         Boolean   @default(true)
+  latitude         Float?
+  longitude        Float?
+  
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  
   providerId  Int
   provider    User      @relation(fields: [providerId], references: [id])
+  
   bookings    Booking[]
+  reviews     Review[]
+  favoritedBy Favorite[]
+  
   createdAt   DateTime  @default(now())
 }
 
-model Booking {
+model Review {
   id        Int      @id @default(autoincrement())
-  date      String
-  time      String
-  status    String   @default("Upcoming")
+  rating    Int
+  comment   String?
   
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
@@ -43,4 +79,52 @@ model Booking {
   service   Service  @relation(fields: [serviceId], references: [id])
   
   createdAt DateTime @default(now())
+}
+
+model Booking {
+  id          Int      @id @default(autoincrement())
+  date        String
+  time        String
+  status      String   @default("Upcoming") // Upcoming, Confirmed, In Progress, Completed, Cancelled
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  notes       String?
+  totalPrice  String?
+  
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  
+  serviceId   Int
+  service     Service  @relation(fields: [serviceId], references: [id])
+  
+  messages    ChatMessage[]
+  
+  createdAt   DateTime @default(now())
+}
+
+model Favorite {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, serviceId])
+}
+
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  message    String
+  createdAt  DateTime @default(now())
+
+  bookingId  Int
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+
+  senderId   Int
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+
+  receiverId Int
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
 }

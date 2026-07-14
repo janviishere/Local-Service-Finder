@@ -1,155 +1,157 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Briefcase, ArrowRight } from 'lucide-react';
+import { Wrench, Mail, Lock, User, ArrowRight, Briefcase } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 
 export default function Signup() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('customer'); // 'customer' or 'provider'
-  const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'customer' // default role
+  });
+  const [loading, setLoading] = useState(false);
+  
+  const { register } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    // TODO: Connect to actual backend registration API
-    if (email && password && name) {
-      login({ id: 2, name, role, email }, 'fake-jwt-token-signup');
+    
+    if (formData.password.length < 8) {
+      addToast('Password must be at least 8 characters long.', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      await register(formData.name, formData.email, formData.password, formData.role);
+      addToast('Account created successfully! Welcome to LocalFinds 🎉', 'success');
       navigate('/dashboard');
-    } else {
-      setError('Please fill in all fields.');
+    } catch (error) {
+      addToast(error.message || 'Registration failed. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center pt-20 pb-12 px-4 relative overflow-hidden bg-warm-white">
-      {/* Background blobs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-royal-blue/10 blur-[120px]" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/10 blur-[120px]" />
-
+    <div className="min-h-screen flex items-center justify-center p-4 py-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* Background decorations */}
+      <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-emerald/10 to-transparent -z-10" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-royal-blue/10 rounded-full blur-3xl -z-10" />
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-md bg-white dark:bg-[#1E293B] rounded-[32px] shadow-xl p-8 md:p-10 border border-slate-100 dark:border-slate-800"
       >
-        <div className="bg-white/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-deep-navy mb-2">Create Account</h1>
-            <p className="text-slate-500">Join us to discover or provide local services</p>
+        <Link to="/" className="inline-flex items-center gap-2 mb-8 group">
+          <div className="bg-emerald text-white p-1.5 rounded-lg group-hover:scale-110 transition-transform">
+            <Wrench size={18} />
           </div>
-
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* Role Selection */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <button
-                type="button"
-                onClick={() => setRole('customer')}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
-                  role === 'customer' 
-                    ? 'border-royal-blue bg-blue-50/50 text-royal-blue' 
-                    : 'border-slate-100 bg-transparent text-slate-400 hover:border-slate-200'
-                }`}
-              >
-                <User className="mb-2" size={24} />
-                <span className="font-semibold text-sm">Customer</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setRole('provider')}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
-                  role === 'provider' 
-                    ? 'border-royal-blue bg-blue-50/50 text-royal-blue' 
-                    : 'border-slate-100 bg-transparent text-slate-400 hover:border-slate-200'
-                }`}
-              >
-                <Briefcase className="mb-2" size={24} />
-                <span className="font-semibold text-sm">Provider</span>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-deep-navy ml-1">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue transition-all"
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-deep-navy ml-1">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue transition-all"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-deep-navy ml-1">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue transition-all"
-                  placeholder="Create a strong password"
-                  required
-                />
-              </div>
-            </div>
-
+          <span className="font-heading font-black text-lg text-deep-navy dark:text-white">LocalFinds</span>
+        </Link>
+        
+        <h1 className="text-3xl font-black mb-2 text-deep-navy dark:text-white">Create an account</h1>
+        <p className="text-slate-500 mb-8 text-sm">Join thousands of users on LocalFinds.</p>
+        
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          {/* Role Selection */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <button
-              type="submit"
-              className="w-full group relative flex items-center justify-center gap-2 bg-royal-blue text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/50 transition-all active:scale-[0.98] mt-4"
+              type="button"
+              onClick={() => setFormData({...formData, role: 'customer'})}
+              className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                formData.role === 'customer' 
+                ? 'border-royal-blue bg-royal-blue/5 text-royal-blue' 
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
             >
-              Sign Up
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <User size={24} />
+              <span className="font-bold text-sm">Customer</span>
             </button>
-          </form>
-
-          <div className="mt-8 text-center text-slate-500 text-sm">
-            Already have an account?{' '}
-            <Link to="/login" className="text-royal-blue font-bold hover:underline">
-              Sign in instead
-            </Link>
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, role: 'provider'})}
+              className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                formData.role === 'provider' 
+                ? 'border-emerald bg-emerald/5 text-emerald' 
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Briefcase size={24} />
+              <span className="font-bold text-sm">Professional</span>
+            </button>
           </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-deep-navy dark:text-white">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                required
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:border-royal-blue focus:bg-white outline-none transition-colors"
+                placeholder="John Doe"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-deep-navy dark:text-white">Email Address</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="email" 
+                required
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:border-royal-blue focus:bg-white outline-none transition-colors"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-semibold mb-2 text-deep-navy dark:text-white">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="password" 
+                required
+                minLength={8}
+                value={formData.password}
+                onChange={e => setFormData({...formData, password: e.target.value})}
+                className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:border-royal-blue focus:bg-white outline-none transition-colors"
+                placeholder="Min. 8 characters"
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Must be at least 8 characters long.</p>
+          </div>
+          
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`w-full py-4 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg disabled:opacity-70 mt-4 ${
+              formData.role === 'provider' ? 'bg-emerald hover:bg-emerald-600 shadow-emerald/30' : 'bg-royal-blue hover:bg-blue-700 shadow-blue-500/30'
+            }`}
+          >
+            {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={18} />
+          </button>
+        </form>
+        
+        <div className="mt-8 text-center border-t border-slate-100 dark:border-slate-800 pt-6">
+          <p className="text-slate-500 text-sm">
+            Already have an account? <Link to="/login" className="text-royal-blue font-bold hover:underline">Log in</Link>
+          </p>
         </div>
       </motion.div>
     </div>

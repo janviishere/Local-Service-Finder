@@ -4,19 +4,93 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Get all services
+// Get all services (with filtering)
 router.get('/', async (req, res) => {
   try {
-    const services = await prisma.service.findMany({
+    const { category, city, minPrice, maxPrice, minRating, search } = req.query;
+    
+    let whereClause = { isActive: true };
+    
+    if (category) {
+      whereClause.category = { slug: category };
+    }
+    if (city) {
+      whereClause.city = { contains: city };
+    }
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search } },
+        { description: { contains: search } }
+      ];
+    }
+    if (minRating) {
+      whereClause.rating = { gte: parseFloat(minRating) };
+    }
+    
+    let services = await prisma.service.findMany({
+      where: whereClause,
       include: {
         provider: {
-          select: { name: true, email: true }
+          select: { name: true, email: true, avatar: true, city: true }
+        },
+        category: {
+          select: { name: true, slug: true, icon: true }
         }
-      }
+      },
+      orderBy: { rating: 'desc' }
+    });
+
+    // Client-side price filter (price is a string like "₹299")
+    if (minPrice || maxPrice) {
+      const min = minPrice ? parseInt(minPrice) : 0;
+      const max = maxPrice ? parseInt(maxPrice) : Infinity;
+      services = services.filter(s => {
+        const numericPrice = parseInt(s.price.replace(/[^\d]/g, ''));
+        return numericPrice >= min && numericPrice <= max;
+      });
+    }
+
+    res.json(services);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch services' });
+  }
+});
+
+
+// Get provider's own services
+router.get('/my-services', verifyToken, async (req, res) => {
+  if (req.user.role !== 'provider') {
+    return res.status(403).json({ error: 'Only providers can access their services' });
+  }
+  try {
+    const services = await prisma.service.findMany({
+      where: { providerId: req.user.id },
+      include: { category: true }
     });
     res.json(services);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch services' });
+  }
+});
+
+// Get a single service
+router.get('/:id', async (req, res) => {
+  try {
+    const service = await prisma.service.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        provider: { select: { name: true, email: true, avatar: true } },
+        category: true,
+        reviews: {
+          include: { user: { select: { name: true, avatar: true } } },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch service' });
   }
 });
 
@@ -27,12 +101,15 @@ router.post('/', verifyToken, async (req, res) => {
   }
 
   try {
-    const { title, description, price } = req.body;
+    const { title, description, price, categoryId, duration, city } = req.body;
     const service = await prisma.service.create({
       data: {
         title,
         description,
         price,
+        categoryId: categoryId ? parseInt(categoryId) : null,
+        duration,
+        city,
         providerId: req.user.id
       }
     });
@@ -42,19 +119,41 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-// Get a single service
-router.get('/:id', async (req, res) => {
+// Update a service (Provider only)
+router.put('/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'provider') return res.status(403).json({ error: 'Forbidden' });
+  
   try {
-    const service = await prisma.service.findUnique({
+    // Check ownership
+    const service = await prisma.service.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!service || service.providerId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to edit this service' });
+    }
+
+    const { title, description, price, categoryId, duration, city, isActive } = req.body;
+    const updated = await prisma.service.update({
       where: { id: parseInt(req.params.id) },
-      include: {
-        provider: { select: { name: true, email: true } }
-      }
+      data: { title, description, price, categoryId: categoryId ? parseInt(categoryId) : null, duration, city, isActive }
     });
-    if (!service) return res.status(404).json({ error: 'Service not found' });
-    res.json(service);
+    res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch service' });
+    res.status(500).json({ error: 'Failed to update service' });
+  }
+});
+
+// Delete a service
+router.delete('/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'provider') return res.status(403).json({ error: 'Forbidden' });
+  
+  try {
+    const service = await prisma.service.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!service || service.providerId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    await prisma.service.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'Service deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete service' });
   }
 });
 
