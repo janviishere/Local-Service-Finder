@@ -88,7 +88,7 @@ export default function Navbar() {
             </button>
 
             {isLocationOpen && (
-              <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-3 z-50">
+              <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 p-3 z-50">
                 <LocationSearch 
                   placeholder="Enter your city..." 
                   onSelect={handleLocationSelect}
@@ -186,14 +186,31 @@ export default function Navbar() {
                   {user.name.split(' ')[0]}
                 </span>
               </Link>
+              <button
+                onClick={() => logout()}
+                className={cn(
+                  'text-sm font-bold px-4 py-2 rounded-xl transition-all',
+                  isHeroDark 
+                    ? 'text-white bg-white/10 hover:bg-white/20 border border-white/20' 
+                    : isDark 
+                      ? 'text-white bg-white/10 hover:bg-white/20 border border-slate-600' 
+                      : 'text-red-600 bg-red-50 hover:bg-red-100 border border-red-100'
+                )}
+              >
+                Log Out
+              </button>
             </div>
           ) : (
             <>
               <Link
                 to="/login"
                 className={cn(
-                  'text-sm font-semibold transition-colors',
-                  isHeroDark ? 'text-white/80 hover:text-white' : isDark ? 'text-slate-300 hover:text-white' : 'text-deep-navy/70 hover:text-deep-navy'
+                  'text-sm font-bold px-4 py-2 rounded-xl transition-all',
+                  isHeroDark 
+                    ? 'text-white bg-white/10 hover:bg-white/20 border border-white/20' 
+                    : isDark 
+                      ? 'text-white bg-white/10 hover:bg-white/20 border border-slate-600' 
+                      : 'text-deep-navy bg-slate-100 hover:bg-slate-200 border border-slate-200'
                 )}
               >
                 Log in

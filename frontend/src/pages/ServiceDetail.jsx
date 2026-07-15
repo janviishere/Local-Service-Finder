@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Clock, MapPin, CheckCircle2, User, ChevronLeft, Heart, Shield, CheckCircle, ChevronRight, ThumbsUp } from 'lucide-react';
+import { Star, Clock, MapPin, CheckCircle2, User, ChevronLeft, Heart, Shield, CheckCircle, ChevronRight, ThumbsUp, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { useTheme } from '../context/ThemeContext';
+import { useLocationContext } from '../context/LocationContext';
 import ReviewCard from '../components/ReviewCard';
 import PortfolioGallery from '../components/PortfolioGallery';
 
@@ -14,6 +15,7 @@ export default function ServiceDetail() {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { user } = useAuth();
+  const { location } = useLocationContext();
   const { addToast } = useToast();
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);

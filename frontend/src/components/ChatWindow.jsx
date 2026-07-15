@@ -30,7 +30,7 @@ export default function ChatWindow({ bookingId, providerId, customerId }) {
     fetchHistory();
 
     // 2. Setup Socket.io connection
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
     socketRef.current.emit('join_booking', bookingId);
 
     // 3. Listen for new messages

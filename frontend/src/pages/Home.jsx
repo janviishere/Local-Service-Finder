@@ -182,7 +182,11 @@ function LoadingScreen({ onDone }) {
 export default function Home() {
   const [service, setService] = useState("");
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !sessionStorage.getItem('homeLoaded'));
+  const handleLoadingDone = () => {
+    setLoading(false);
+    sessionStorage.setItem('homeLoaded', 'true');
+  };
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { location, setLocation } = useLocationContext();
@@ -222,7 +226,7 @@ export default function Home() {
   if (loading) {
     return (
       <AnimatePresence onExitComplete={() => {}}>
-        {loading && <LoadingScreen onDone={() => setLoading(false)} />}
+        {loading && <LoadingScreen onDone={handleLoadingDone} />}
       </AnimatePresence>
     );
   }
@@ -286,15 +290,15 @@ export default function Home() {
             className="w-full max-w-4xl mx-auto"
           >
             <div className="rounded-[28px] border border-white/20 bg-white/5 backdrop-blur-xl p-2 shadow-[0_0_60px_rgba(37,99,235,0.15)]">
-              <div className="bg-white/95 backdrop-blur-2xl rounded-2xl md:rounded-full p-2 flex flex-col md:flex-row items-stretch gap-2 shadow-2xl">
-                <div className="flex flex-1 items-center gap-3 px-5 py-3 border-b md:border-b-0 md:border-r border-slate-200">
+              <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl md:rounded-full p-2 flex flex-col md:flex-row items-stretch gap-2 shadow-2xl">
+                <div className="flex flex-1 items-center gap-3 px-5 py-3 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700">
                   <Search className="text-royal-blue shrink-0" size={20} />
                   <input
                     type="text"
                     value={service}
                     onChange={e => setService(e.target.value)}
                     placeholder="What service do you need?"
-                    className="w-full bg-transparent outline-none text-deep-navy placeholder:text-slate-400 font-medium text-sm"
+                    className="w-full bg-transparent outline-none text-deep-navy dark:text-white placeholder:text-slate-400 font-medium text-sm"
                     onKeyDown={e => e.key === "Enter" && handleSearch()}
                     id="hero-service-input"
                   />
@@ -776,113 +780,6 @@ export default function Home() {
               </Link>
             </div>
           </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════ 10. MOBILE APP ══════════ */}
-      <section className="py-24 px-4 relative overflow-hidden" style={{ backgroundColor: "#0F172A" }}>
-        <div className="absolute inset-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-royal-blue/10 rounded-full blur-3xl" />
-        </div>
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <FadeIn>
-              <span className="text-sm font-bold text-royal-blue uppercase tracking-widest">Mobile App</span>
-              <h2 className="text-3xl md:text-5xl font-black mt-3 mb-6 text-white leading-tight">
-                Book Services On The Go
-              </h2>
-              <p className="text-slate-400 mb-8 leading-relaxed">
-                Download the LocalFinds app for the smoothest booking experience. Track your professional in real-time, chat instantly, and pay securely — all from your pocket.
-              </p>
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                {[
-                  { icon: <MapPin size={20} />, title: "Live Tracking", desc: "Track your pro's location" },
-                  { icon: <Phone size={20} />,  title: "Instant Chat",  desc: "Connect with professionals" },
-                  { icon: <Star size={20} />,   title: "Easy Booking",  desc: "Book in under 60 seconds"  },
-                  { icon: <CreditCard size={20} />, title: "Secure Pay", desc: "Multiple payment options"  },
-                ].map(f => (
-                  <div key={f.title} className="glassmorphism-card rounded-2xl p-4 flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-royal-blue/20 text-royal-blue flex items-center justify-center shrink-0">
-                      {f.icon}
-                    </div>
-                    <div>
-                      <p className="text-white font-bold text-sm">{f.title}</p>
-                      <p className="text-slate-400 text-xs">{f.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-4">
-                <a href="#" id="app-store-btn" className="btn-ripple flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-white text-deep-navy font-bold hover:opacity-90 transition-all hover:scale-105">
-                  <FaApple size={22} /> App Store
-                </a>
-                <a href="#" id="play-store-btn" className="btn-ripple flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-white text-deep-navy font-bold hover:opacity-90 transition-all hover:scale-105">
-                  <FaGooglePlay size={20} /> Google Play
-                </a>
-              </div>
-            </FadeIn>
-
-            <FadeIn delay={0.2} className="flex justify-center">
-              <div className="relative">
-                {/* Phone mockup */}
-                <div className="w-72 h-[560px] bg-gradient-to-br from-slate-800 to-slate-900 rounded-[48px] border-4 border-slate-700 shadow-2xl overflow-hidden relative glow-blue">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-slate-900 rounded-b-2xl z-10" />
-                  <div className="w-full h-full bg-gradient-to-b from-royal-blue/20 to-deep-navy flex flex-col">
-                    {/* App UI preview */}
-                    <div className="px-6 pt-10 pb-4">
-                      <p className="text-white/50 text-xs mb-1">Good Morning 👋</p>
-                      <p className="text-white font-bold text-lg">What do you need today?</p>
-                    </div>
-                    {/* Search bar */}
-                    <div className="mx-4 mb-4 bg-white/10 rounded-2xl px-4 py-3 flex items-center gap-2">
-                      <Search size={16} className="text-white/50" />
-                      <span className="text-white/40 text-sm">Search services...</span>
-                    </div>
-                    {/* Service icons row */}
-                    <div className="px-4 mb-4">
-                      <p className="text-white/60 text-xs mb-3">Popular</p>
-                      <div className="grid grid-cols-4 gap-3">
-                        {SERVICES.slice(0, 8).map(s => (
-                          <div key={s.id} className="flex flex-col items-center gap-1">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: `${s.color}33`, color: s.color }}>
-                              {s.icon}
-                            </div>
-                            <span className="text-white/50 text-[9px] text-center leading-tight">{s.label.split(' ')[0]}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Active booking card */}
-                    <div className="mx-4 bg-royal-blue rounded-3xl p-4">
-                      <p className="text-white/70 text-xs mb-1">Active Booking</p>
-                      <p className="text-white font-bold text-sm">Rajesh Kumar · Electrician</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-                        <span className="text-white/70 text-xs">En route · Arrives in 15 min</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Floating notification cards */}
-                <motion.div
-                  className="absolute -right-8 top-24 glassmorphism-card rounded-2xl px-4 py-3 w-44"
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <p className="text-white text-xs font-bold">✅ Booking Confirmed!</p>
-                  <p className="text-white/50 text-[10px] mt-0.5">Rajesh arrives in 15 min</p>
-                </motion.div>
-                <motion.div
-                  className="absolute -left-8 bottom-24 glassmorphism-card rounded-2xl px-4 py-3 w-40"
-                  animate={{ y: [0, 8, 0] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                >
-                  <p className="text-white text-xs font-bold">⭐ 4.9 Rating</p>
-                  <p className="text-white/50 text-[10px] mt-0.5">50,000+ happy customers</p>
-                </motion.div>
-              </div>
-            </FadeIn>
-          </div>
         </div>
       </section>
 

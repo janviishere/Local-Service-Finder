@@ -13,6 +13,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    <script>
+      function initGoogleMaps() {
+        window.__googleMapsReady = true;
+        window.dispatchEvent(new Event('google-maps-ready'));
+      }
+    </script>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7B0iX6LbNROHFrle3CA6iwfrqO6kAyQc&libraries=places&callback=initGoogleMaps"
+      async defer
+    ></script>
   </head>
   <body>
     <div id="root"></div>

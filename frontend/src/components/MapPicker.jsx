@@ -1,82 +1,106 @@
-import { useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useEffect, useRef, useState } from 'react';
 import { MapPin, Loader } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix for default marker icon in leaflet with webpack/vite
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-function LocationMarker({ position, setPosition, onLocationFound }) {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      onLocationFound(e.latlng);
-      map.flyTo(e.latlng, Math.max(map.getZoom(), 10));
-    },
-  });
-
-  return position === null ? null : <Marker position={position} />;
-}
-
-async function reverseGeocode(lat, lng) {
-  // Call Nominatim directly – no backend required, and no CORS issues from the browser
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-    { headers: { 'Accept-Language': 'en' } }
-  );
-  if (!res.ok) throw new Error('Nominatim error');
-  return res.json();
-}
 
 export default function MapPicker({ onSelectLocation }) {
-  const [position, setPosition] = useState(null);
+  const mapRef = useRef(null);
+  const [map, setMap] = useState(null);
+  const [marker, setMarker] = useState(null);
   const [loading, setLoading] = useState(false);
   const [addressName, setAddressName] = useState('');
 
-  // Default center: Madhya Pradesh / Central India
-  const defaultCenter = [23.2599, 77.4126];
+  const defaultCenter = { lat: 23.2599, lng: 77.4126 };
 
-  const handleLocationFound = async (latlng) => {
+  useEffect(() => {
+    let intervalId;
+
+    const initMap = () => {
+      if (window.google && window.google.maps && mapRef.current && !map) {
+        const initialMap = new window.google.maps.Map(mapRef.current, {
+          center: defaultCenter,
+          zoom: 6,
+          disableDefaultUI: false,
+        });
+        setMap(initialMap);
+
+        const initialMarker = new window.google.maps.Marker({
+          map: initialMap,
+        });
+        setMarker(initialMarker);
+
+        initialMap.addListener('click', (e) => {
+          const latLng = e.latLng;
+          initialMarker.setPosition(latLng);
+          initialMap.panTo(latLng);
+          initialMap.setZoom(Math.max(initialMap.getZoom(), 10));
+          handleLocationFound(latLng.lat(), latLng.lng());
+        });
+        
+        if (intervalId) clearInterval(intervalId);
+      }
+    };
+
+    if (window.google && window.google.maps) {
+      initMap();
+    } else {
+      intervalId = setInterval(initMap, 100);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [mapRef, map]);
+
+  const handleLocationFound = async (lat, lng) => {
     setLoading(true);
     try {
-      const data = await reverseGeocode(latlng.lat, latlng.lng);
-      if (data && data.address) {
-        const city =
-          data.address.city ||
-          data.address.town ||
-          data.address.village ||
-          data.address.county ||
-          data.address.state_district ||
-          'Selected Location';
+      if (window.google && window.google.maps && window.google.maps.Geocoder) {
+        const geocoder = new window.google.maps.Geocoder();
+        const response = await geocoder.geocode({ location: { lat, lng } });
+        
+        if (response.results && response.results.length > 0) {
+          const result = response.results[0];
+          
+          let city = 'Selected Location';
+          for (let component of result.address_components) {
+            if (component.types.includes('locality')) {
+              city = component.long_name;
+              break;
+            } else if (component.types.includes('administrative_area_level_2')) {
+              city = component.long_name;
+            }
+          }
+          
+          setAddressName(city);
 
-        setAddressName(city);
-
-        if (onSelectLocation) {
-          onSelectLocation({
-            name: city,
-            full: data.display_name,
-            lat: latlng.lat,
-            lon: latlng.lng,
-          });
+          if (onSelectLocation) {
+            onSelectLocation({
+              name: city,
+              full: result.formatted_address,
+              lat: lat,
+              lon: lng,
+            });
+          }
+        } else {
+          setAddressName('Location selected');
+          if (onSelectLocation) {
+            onSelectLocation({
+              name: 'Selected Location',
+              full: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+              lat: lat,
+              lon: lng,
+            });
+          }
         }
-      } else {
-        setAddressName('Selected Location');
       }
     } catch (error) {
-      console.error('Reverse geocoding failed:', error);
+      console.error('Geocoding failed:', error);
       setAddressName('Location selected');
       if (onSelectLocation) {
         onSelectLocation({
           name: 'Selected Location',
-          full: `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`,
-          lat: latlng.lat,
-          lon: latlng.lng,
+          full: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          lat: lat,
+          lon: lng,
         });
       }
     } finally {
@@ -85,8 +109,7 @@ export default function MapPicker({ onSelectLocation }) {
   };
 
   return (
-    <div className="w-full relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-md">
-      {/* Overlay badge */}
+    <div className="w-full relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-md" style={{ height: '400px' }}>
       <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-slate-100 flex items-center gap-2 max-w-xs">
         {loading ? (
           <Loader size={16} className="text-royal-blue animate-spin" />
@@ -97,23 +120,7 @@ export default function MapPicker({ onSelectLocation }) {
           {loading ? 'Finding location…' : addressName || 'Click on map to select your city'}
         </span>
       </div>
-
-      <MapContainer
-        center={defaultCenter}
-        zoom={6}
-        scrollWheelZoom={false}
-        style={{ height: '400px', width: '100%', zIndex: 1 }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <LocationMarker
-          position={position}
-          setPosition={setPosition}
-          onLocationFound={handleLocationFound}
-        />
-      </MapContainer>
+      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }

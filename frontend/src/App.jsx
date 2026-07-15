@@ -13,6 +13,9 @@ import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import ToastProvider from './components/Toast'
 
+// Pages that should hide the Navbar and Footer (full-screen auth pages)
+const AUTH_PAGES = ['/login', '/signup'];
+
 function ScrollProgress() {
   const barRef = useRef(null);
 
@@ -36,7 +39,10 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
+function AppContent() {
+  const { pathname } = useLocation();
+  const isAuthPage = AUTH_PAGES.includes(pathname);
+
   return (
     <div
       className="min-h-screen flex flex-col relative"
@@ -44,34 +50,42 @@ function App() {
     >
       <ScrollProgress />
       <ScrollToTop />
-      <ToastProvider>
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/services/:id" element={<ServiceDetail />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            
-            {/* Protected Routes */}
-            <Route path="/booking/:serviceId" element={
-              <ProtectedRoute allowedRoles={['customer']}>
-                <Booking />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute allowedRoles={['customer', 'provider']}>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </main>
-        <Footer />
-      </ToastProvider>
+      {/* Only show Navbar on non-auth pages */}
+      {!isAuthPage && <Navbar />}
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/services/:id" element={<ServiceDetail />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          
+          {/* Protected Routes */}
+          <Route path="/booking/:serviceId" element={
+            <ProtectedRoute allowedRoles={['customer']}>
+              <Booking />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute allowedRoles={['customer', 'provider']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </main>
+      {/* Only show Footer on non-auth pages */}
+      {!isAuthPage && <Footer />}
     </div>
-  )
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
 }
 
 export default App

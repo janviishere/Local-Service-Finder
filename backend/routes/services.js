@@ -17,12 +17,6 @@ router.get('/', async (req, res) => {
     if (city) {
       whereClause.city = { contains: city };
     }
-    if (search) {
-      whereClause.OR = [
-        { title: { contains: search } },
-        { description: { contains: search } }
-      ];
-    }
     if (minRating) {
       whereClause.rating = { gte: parseFloat(minRating) };
     }
@@ -30,15 +24,32 @@ router.get('/', async (req, res) => {
     let services = await prisma.service.findMany({
       where: whereClause,
       include: {
-        provider: {
-          select: { name: true, email: true, avatar: true, city: true }
-        },
-        category: {
-          select: { name: true, slug: true, icon: true }
-        }
+        provider: { select: { id: true, name: true, email: true, avatar: true, city: true } },
+        category: { select: { name: true, slug: true, icon: true } }
       },
       orderBy: { rating: 'desc' }
     });
+
+    // Fallback: If specific city not found, return all active services
+    if (services.length === 0 && city) {
+      delete whereClause.city;
+      services = await prisma.service.findMany({
+        where: whereClause,
+        include: {
+          provider: { select: { id: true, name: true, email: true, avatar: true, city: true } },
+          category: { select: { name: true, slug: true, icon: true } }
+        },
+        orderBy: { rating: 'desc' }
+      });
+    }
+
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      services = services.filter(s => 
+        s.title.toLowerCase().includes(lowerSearch) || 
+        (s.description && s.description.toLowerCase().includes(lowerSearch))
+      );
+    }
 
     // Client-side price filter (price is a string like "₹299")
     if (minPrice || maxPrice) {
@@ -52,9 +63,11 @@ router.get('/', async (req, res) => {
 
     res.json(services);
   } catch (error) {
+    console.error('Services fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch services' });
   }
 });
+
 
 
 // Get provider's own services
