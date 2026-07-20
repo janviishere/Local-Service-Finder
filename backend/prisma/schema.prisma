@@ -3,16 +3,16 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   email     String    @unique
   password  String
-  role      String    @default("customer") // 'customer' or 'provider'
+  role      String    @default("customer") // 'customer', 'provider', or 'admin'
   phone     String?
   avatar    String?
   address   String?
@@ -20,19 +20,19 @@ model User {
   latitude  Float?
   longitude Float?
   createdAt DateTime  @default(now())
-  
-  services         Service[]       // For providers
-  bookings         Booking[]       // For customers
-  reviews          Review[]        // For customers
-  favorites        Favorite[]      // Favorited services
+
+  services         Service[]        // For providers
+  bookings         Booking[]        // For customers
+  reviews          Review[]         // For customers
+  favorites        Favorite[]       // Favorited services
   providerProfile  ProviderProfile?
-  sentMessages     ChatMessage[]   @relation("SentMessages")
-  receivedMessages ChatMessage[]   @relation("ReceivedMessages")
+  sentMessages     ChatMessage[]    @relation("SentMessages")
+  receivedMessages ChatMessage[]    @relation("ReceivedMessages")
 }
 
 model ProviderProfile {
-  id                 Int      @id @default(autoincrement())
-  userId             Int      @unique
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String   @unique @db.ObjectId
   user               User     @relation(fields: [userId], references: [id])
 
   tagline            String?
@@ -60,7 +60,7 @@ model ProviderProfile {
 }
 
 model Category {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   slug        String    @unique
   icon        String?
@@ -70,7 +70,7 @@ model Category {
 }
 
 model Service {
-  id               Int       @id @default(autoincrement())
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
   title            String
   description      String?
   price            String
@@ -83,36 +83,36 @@ model Service {
   isActive         Boolean   @default(true)
   latitude         Float?
   longitude        Float?
-  
-  categoryId  Int?
+
+  categoryId  String?   @db.ObjectId
   category    Category? @relation(fields: [categoryId], references: [id])
-  
-  providerId  Int
+
+  providerId  String    @db.ObjectId
   provider    User      @relation(fields: [providerId], references: [id])
-  
+
   bookings    Booking[]
   reviews     Review[]
   favoritedBy Favorite[]
-  
+
   createdAt   DateTime  @default(now())
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   rating    Int
   comment   String?
-  
-  userId    Int
+
+  userId    String   @db.ObjectId
   user      User     @relation(fields: [userId], references: [id])
-  
-  serviceId Int
+
+  serviceId String   @db.ObjectId
   service   Service  @relation(fields: [serviceId], references: [id])
-  
+
   createdAt DateTime @default(now())
 }
 
 model Booking {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   date        String
   time        String
   status      String   @default("Upcoming") // Upcoming, Confirmed, In Progress, Completed, Cancelled
@@ -121,24 +121,24 @@ model Booking {
   longitude   Float?
   notes       String?
   totalPrice  String?
-  
-  userId      Int
+
+  userId      String   @db.ObjectId
   user        User     @relation(fields: [userId], references: [id])
-  
-  serviceId   Int
+
+  serviceId   String   @db.ObjectId
   service     Service  @relation(fields: [serviceId], references: [id])
-  
+
   messages    ChatMessage[]
   payment     Payment?
-  
+
   createdAt   DateTime @default(now())
 }
 
 model Favorite {
-  id        Int     @id @default(autoincrement())
-  userId    Int
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String  @db.ObjectId
   user      User    @relation(fields: [userId], references: [id])
-  serviceId Int
+  serviceId String  @db.ObjectId
   service   Service @relation(fields: [serviceId], references: [id])
   createdAt DateTime @default(now())
 
@@ -146,23 +146,23 @@ model Favorite {
 }
 
 model ChatMessage {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   message    String
   createdAt  DateTime @default(now())
 
-  bookingId  Int
+  bookingId  String   @db.ObjectId
   booking    Booking  @relation(fields: [bookingId], references: [id])
 
-  senderId   Int
+  senderId   String   @db.ObjectId
   sender     User     @relation("SentMessages", fields: [senderId], references: [id])
 
-  receiverId Int
+  receiverId String   @db.ObjectId
   receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
 }
 
 model Payment {
-  id              Int      @id @default(autoincrement())
-  bookingId       Int      @unique
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId       String   @unique @db.ObjectId
   booking         Booking  @relation(fields: [bookingId], references: [id])
 
   amount          Float

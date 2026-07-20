@@ -86,7 +86,7 @@ router.get('/bookings', verifyAdmin, async (req, res) => {
 // Ban/Delete a user (cascading normally handled by prisma, but we need to ensure it or just delete)
 router.delete('/users/:id', verifyAdmin, async (req, res) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = req.params.id;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.role === 'admin') return res.status(403).json({ error: 'Cannot delete admin' });

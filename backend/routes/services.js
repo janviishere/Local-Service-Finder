@@ -90,7 +90,7 @@ router.get('/my-services', verifyToken, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const service = await prisma.service.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: req.params.id },
       include: {
         provider: { select: { name: true, email: true, avatar: true } },
         category: true,
@@ -120,7 +120,7 @@ router.post('/', verifyToken, async (req, res) => {
         title,
         description,
         price,
-        categoryId: categoryId ? parseInt(categoryId) : null,
+        categoryId: categoryId || null,
         duration,
         city,
         providerId: req.user.id
@@ -138,15 +138,15 @@ router.put('/:id', verifyToken, async (req, res) => {
   
   try {
     // Check ownership
-    const service = await prisma.service.findUnique({ where: { id: parseInt(req.params.id) } });
+    const service = await prisma.service.findUnique({ where: { id: req.params.id } });
     if (!service || service.providerId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to edit this service' });
     }
 
     const { title, description, price, categoryId, duration, city, isActive } = req.body;
     const updated = await prisma.service.update({
-      where: { id: parseInt(req.params.id) },
-      data: { title, description, price, categoryId: categoryId ? parseInt(categoryId) : null, duration, city, isActive }
+      where: { id: req.params.id },
+      data: { title, description, price, categoryId: categoryId || null, duration, city, isActive }
     });
     res.json(updated);
   } catch (error) {
@@ -159,11 +159,11 @@ router.delete('/:id', verifyToken, async (req, res) => {
   if (req.user.role !== 'provider') return res.status(403).json({ error: 'Forbidden' });
   
   try {
-    const service = await prisma.service.findUnique({ where: { id: parseInt(req.params.id) } });
+    const service = await prisma.service.findUnique({ where: { id: req.params.id } });
     if (!service || service.providerId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-    await prisma.service.delete({ where: { id: parseInt(req.params.id) } });
+    await prisma.service.delete({ where: { id: req.params.id } });
     res.json({ message: 'Service deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete service' });

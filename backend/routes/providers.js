@@ -46,7 +46,7 @@ router.get('/profile', verifyToken, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const profile = await prisma.providerProfile.findUnique({
-      where: { userId: parseInt(req.params.id) },
+      where: { userId: req.params.id },
       include: {
         user: {
           select: {

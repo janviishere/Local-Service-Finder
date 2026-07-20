@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all messages for a booking
 router.get('/:bookingId', verifyToken, async (req, res) => {
   try {
-    const bookingId = parseInt(req.params.bookingId);
+    const bookingId = req.params.bookingId;
 
     // Verify user has access to this booking
     const booking = await prisma.booking.findUnique({
@@ -35,7 +35,7 @@ router.get('/:bookingId', verifyToken, async (req, res) => {
 // Post a new message (REST fallback)
 router.post('/:bookingId', verifyToken, async (req, res) => {
   try {
-    const bookingId = parseInt(req.params.bookingId);
+    const bookingId = req.params.bookingId;
     const { message, receiverId } = req.body;
 
     const msg = await prisma.chatMessage.create({
@@ -43,7 +43,7 @@ router.post('/:bookingId', verifyToken, async (req, res) => {
         message,
         bookingId,
         senderId: req.user.id,
-        receiverId: parseInt(receiverId),
+        receiverId: receiverId,
       },
       include: { sender: { select: { id: true, name: true, avatar: true, role: true } } },
     });

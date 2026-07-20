@@ -21,7 +21,7 @@ router.post('/initiate', verifyToken, async (req, res) => {
     // paymentType: 'deposit' (50%) | 'full' (100%)
 
     const booking = await prisma.booking.findUnique({
-      where: { id: parseInt(bookingId) },
+      where: { id: bookingId },
       include: { service: true, payment: true },
     });
 
@@ -40,7 +40,7 @@ router.post('/initiate', verifyToken, async (req, res) => {
     if (!payment) {
       payment = await prisma.payment.create({
         data: {
-          bookingId: parseInt(bookingId),
+          bookingId: bookingId,
           amount: totalWithTax,
           depositAmount,
           taxAmount,
@@ -90,7 +90,7 @@ router.post('/confirm', verifyToken, async (req, res) => {
     }
 
     const payment = await prisma.payment.findUnique({
-      where: { id: parseInt(paymentId) },
+      where: { id: paymentId },
       include: { booking: { include: { service: { include: { provider: { include: { providerProfile: true } } } } } } },
     });
 
@@ -100,7 +100,7 @@ router.post('/confirm', verifyToken, async (req, res) => {
     const isDepositOnly = paymentType === 'deposit';
 
     const updatedPayment = await prisma.payment.update({
-      where: { id: parseInt(paymentId) },
+      where: { id: paymentId },
       data: {
         paymentMethod,
         transactionId,
@@ -149,7 +149,7 @@ router.post('/complete-remaining', verifyToken, async (req, res) => {
     const { paymentId, paymentMethod, cardDetails } = req.body;
 
     const payment = await prisma.payment.findUnique({
-      where: { id: parseInt(paymentId) },
+      where: { id: paymentId },
       include: { booking: { include: { service: { include: { provider: true } } } } },
     });
 
@@ -161,7 +161,7 @@ router.post('/complete-remaining', verifyToken, async (req, res) => {
     const transactionId = `TXN${Date.now()}${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     await prisma.payment.update({
-      where: { id: parseInt(paymentId) },
+      where: { id: paymentId },
       data: { fullPaid: true, status: 'completed', transactionId },
     });
 
@@ -195,7 +195,7 @@ router.post('/complete-remaining', verifyToken, async (req, res) => {
 router.get('/receipt/:bookingId', verifyToken, async (req, res) => {
   try {
     const booking = await prisma.booking.findUnique({
-      where: { id: parseInt(req.params.bookingId) },
+      where: { id: req.params.bookingId },
       include: {
         service: {
           include: {

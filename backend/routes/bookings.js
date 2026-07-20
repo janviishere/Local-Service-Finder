@@ -47,7 +47,7 @@ router.post('/', verifyToken, async (req, res) => {
     const { serviceId, date, time, address, latitude, longitude, notes } = req.body;
     const booking = await prisma.booking.create({
       data: {
-        serviceId: parseInt(serviceId),
+        serviceId: serviceId,
         userId: req.user.id,
         date,
         time,
@@ -67,7 +67,7 @@ router.post('/', verifyToken, async (req, res) => {
 router.put('/:id/status', verifyToken, async (req, res) => {
   try {
     const { status } = req.body; // 'Confirmed', 'Completed', 'Cancelled'
-    const bookingId = parseInt(req.params.id);
+    const bookingId = req.params.id;
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },

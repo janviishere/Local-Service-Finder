@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/service/:id', async (req, res) => {
   try {
     const reviews = await prisma.review.findMany({
-      where: { serviceId: parseInt(req.params.id) },
+      where: { serviceId: req.params.id },
       include: {
         user: { select: { name: true, avatar: true } }
       },
@@ -33,7 +33,7 @@ router.post('/', verifyToken, async (req, res) => {
     const completedBooking = await prisma.booking.findFirst({
       where: {
         userId: req.user.id,
-        serviceId: parseInt(serviceId),
+        serviceId: serviceId,
         status: 'Completed'
       }
     });
@@ -45,7 +45,7 @@ router.post('/', verifyToken, async (req, res) => {
     // Create review
     const review = await prisma.review.create({
       data: {
-        serviceId: parseInt(serviceId),
+        serviceId: serviceId,
         userId: req.user.id,
         rating: parseInt(rating),
         comment
@@ -54,13 +54,13 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Update service average rating
     const aggregations = await prisma.review.aggregate({
-      where: { serviceId: parseInt(serviceId) },
+      where: { serviceId: serviceId },
       _avg: { rating: true },
       _count: { id: true }
     });
 
     await prisma.service.update({
-      where: { id: parseInt(serviceId) },
+      where: { id: serviceId },
       data: {
         rating: aggregations._avg.rating || 0,
         reviewCount: aggregations._count.id

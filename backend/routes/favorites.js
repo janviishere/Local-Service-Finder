@@ -29,7 +29,7 @@ router.get('/', verifyToken, async (req, res) => {
 router.get('/check/:serviceId', verifyToken, async (req, res) => {
   try {
     const fav = await prisma.favorite.findUnique({
-      where: { userId_serviceId: { userId: req.user.id, serviceId: parseInt(req.params.serviceId) } },
+      where: { userId_serviceId: { userId: req.user.id, serviceId: req.params.serviceId } },
     });
     res.json({ isFavorited: !!fav });
   } catch (error) {
@@ -39,7 +39,7 @@ router.get('/check/:serviceId', verifyToken, async (req, res) => {
 
 // Toggle favorite (add if not exists, remove if exists)
 router.post('/toggle/:serviceId', verifyToken, async (req, res) => {
-  const serviceId = parseInt(req.params.serviceId);
+  const serviceId = req.params.serviceId;
   const userId = req.user.id;
 
   try {
