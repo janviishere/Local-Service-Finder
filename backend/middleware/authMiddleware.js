@@ -14,3 +14,13 @@ export const verifyToken = (req, res, next) => {
     res.status(400).json({ error: 'Invalid token.' });
   }
 };
+
+export const verifyAdmin = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user && req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+  });
+};

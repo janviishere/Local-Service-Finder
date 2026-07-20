@@ -29,9 +29,14 @@ export default function Signup() {
     setLoading(true);
     
     try {
-      await register(formData.name, formData.email, formData.password, formData.role);
+      const result = await register(formData.name, formData.email, formData.password, formData.role);
       addToast('Account created successfully! Welcome to LocalFinds 🎉', 'success');
-      navigate('/dashboard');
+      // Providers go to onboarding flow, customers go to dashboard
+      if (formData.role === 'provider') {
+        navigate('/provider/onboarding');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       addToast(error.message || 'Registration failed. Please try again.', 'error');
     } finally {

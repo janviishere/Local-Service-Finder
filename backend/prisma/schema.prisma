@@ -21,12 +21,42 @@ model User {
   longitude Float?
   createdAt DateTime  @default(now())
   
-  services     Service[]     // For providers
-  bookings     Booking[]     // For customers
-  reviews      Review[]      // For customers
-  favorites    Favorite[]    // Favorited services
-  sentMessages    ChatMessage[] @relation("SentMessages")
-  receivedMessages ChatMessage[] @relation("ReceivedMessages")
+  services         Service[]       // For providers
+  bookings         Booking[]       // For customers
+  reviews          Review[]        // For customers
+  favorites        Favorite[]      // Favorited services
+  providerProfile  ProviderProfile?
+  sentMessages     ChatMessage[]   @relation("SentMessages")
+  receivedMessages ChatMessage[]   @relation("ReceivedMessages")
+}
+
+model ProviderProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id])
+
+  tagline            String?
+  bio                String?
+  yearsOfExperience  Int?
+  certifications     String?  // JSON array of strings
+  documents          String?  // JSON array of { name, url }
+  serviceRadius      Float?   // in km
+  subscriptionPlan   String   @default("basic") // basic, pro, premium
+  verificationStatus String   @default("approved")
+  isAvailable        Boolean  @default(true)
+  availabilitySlots  String?  // JSON: { "mon": ["09:00","10:00"...], "tue": [...] }
+
+  // Service area location
+  serviceArea        String?
+  serviceLatitude    Float?
+  serviceLongitude   Float?
+
+  // Stats (updated on booking complete)
+  totalEarnings      Float    @default(0)
+  completedJobs      Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Category {
@@ -99,6 +129,7 @@ model Booking {
   service     Service  @relation(fields: [serviceId], references: [id])
   
   messages    ChatMessage[]
+  payment     Payment?
   
   createdAt   DateTime @default(now())
 }
@@ -127,4 +158,23 @@ model ChatMessage {
 
   receiverId Int
   receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  bookingId       Int      @unique
+  booking         Booking  @relation(fields: [bookingId], references: [id])
+
+  amount          Float
+  depositAmount   Float    @default(0)
+  depositPaid     Boolean  @default(false)
+  fullPaid        Boolean  @default(false)
+  paymentMethod   String?  // card, upi, wallet
+  transactionId   String?
+  status          String   @default("pending") // pending, deposit_paid, completed, refunded
+  invoiceNumber   String?
+  taxAmount       Float    @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

@@ -2,10 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2, X, Navigation } from 'lucide-react';
 import { useLocationContext } from '../context/LocationContext';
 
-function isGoogleReady() {
-  return !!(window.google && window.google.maps && window.google.maps.places);
-}
-
 // Popular Indian cities for instant offline suggestions
 const INDIAN_CITIES = [
   'Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad',
@@ -19,39 +15,18 @@ const INDIAN_CITIES = [
 export default function LocationSearch({ onSelect, placeholder = "Enter your city...", initialValue = "", className = "" }) {
   const { detectLocation } = useLocationContext();
   const [query, setQuery] = useState(initialValue || "");
-  const [results, setResults] = useState([]);
+  const [nominatimResults, setNominatimResults] = useState([]);
   const [localResults, setLocalResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [mapsReady, setMapsReady] = useState(isGoogleReady());
   const wrapperRef = useRef(null);
-  const autocompleteServiceRef = useRef(null);
-  const geocoderRef = useRef(null);
   const debounceRef = useRef(null);
 
   // Sync query when initialValue changes from outside
   useEffect(() => {
     setQuery(initialValue || "");
   }, [initialValue]);
-
-  // Wait for Google Maps to become available
-  useEffect(() => {
-    if (isGoogleReady()) {
-      setMapsReady(true);
-      return;
-    }
-    const onReady = () => setMapsReady(true);
-    window.addEventListener('google-maps-ready', onReady);
-    return () => window.removeEventListener('google-maps-ready', onReady);
-  }, []);
-
-  // Init services once Maps is ready
-  useEffect(() => {
-    if (!mapsReady) return;
-    autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
-    geocoderRef.current = new window.google.maps.Geocoder();
-  }, [mapsReady]);
 
   // Instant local city filter
   useEffect(() => {
@@ -64,41 +39,30 @@ export default function LocationSearch({ onSelect, placeholder = "Enter your cit
     setLocalResults(matched);
   }, [query]);
 
-  // Debounced Google Maps search
+  // Debounced Nominatim search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query || query.length < 2 || !isOpen || !mapsReady || !autocompleteServiceRef.current) {
-      setResults([]);
+    if (!query || query.length < 3 || !isOpen) {
+      setNominatimResults([]);
       return;
     }
-    debounceRef.current = setTimeout(() => {
+    debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
-      autocompleteServiceRef.current.getPlacePredictions(
-        { input: query, types: ['(cities)'], language: 'en' },
-        (predictions, status) => {
-          const OK = window.google.maps.places.PlacesServiceStatus.OK;
-          if (status === OK && predictions && predictions.length > 0) {
-            setIsLoading(false);
-            setResults(predictions);
-          } else {
-            // Fallback: no type restriction
-            autocompleteServiceRef.current.getPlacePredictions(
-              { input: query, language: 'en' },
-              (fallbackPreds, fallbackStatus) => {
-                setIsLoading(false);
-                if (fallbackStatus === OK && fallbackPreds) {
-                  setResults(fallbackPreds.slice(0, 6));
-                } else {
-                  setResults([]);
-                }
-              }
-            );
-          }
-        }
-      );
-    }, 350);
+      try {
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&featuretype=city`,
+          { headers: { 'Accept-Language': 'en' }, signal: AbortSignal.timeout(5000) }
+        );
+        const data = await resp.json();
+        setNominatimResults(data);
+      } catch {
+        setNominatimResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 450);
     return () => clearTimeout(debounceRef.current);
-  }, [query, isOpen, mapsReady]);
+  }, [query, isOpen]);
 
   // Click outside to close
   useEffect(() => {
@@ -113,37 +77,36 @@ export default function LocationSearch({ onSelect, placeholder = "Enter your cit
 
   const handleSelectCity = (cityName) => {
     setQuery(cityName);
-    setResults([]);
+    setNominatimResults([]);
     setLocalResults([]);
     setIsOpen(false);
     if (onSelect) onSelect({ name: cityName });
   };
 
-  const handleSelect = (result) => {
-    const city = result.structured_formatting?.main_text || result.description.split(',')[0];
+  const handleSelectNominatim = (result) => {
+    const city =
+      result.address?.city ||
+      result.address?.town ||
+      result.address?.village ||
+      result.display_name.split(',')[0];
     setQuery(city);
-    setResults([]);
+    setNominatimResults([]);
     setLocalResults([]);
     setIsOpen(false);
-    if (!onSelect) return;
-    if (geocoderRef.current) {
-      geocoderRef.current.geocode({ placeId: result.place_id }, (geoResults, status) => {
-        if (status === 'OK' && geoResults?.[0]?.geometry?.location) {
-          const loc = geoResults[0].geometry.location;
-          onSelect({ name: city, full: result.description, lat: loc.lat(), lon: loc.lng(), raw: result });
-        } else {
-          onSelect({ name: city, full: result.description, raw: result });
-        }
+    if (onSelect) {
+      onSelect({
+        name: city,
+        full: result.display_name,
+        lat: parseFloat(result.lat),
+        lon: parseFloat(result.lon),
       });
-    } else {
-      onSelect({ name: city, full: result.description, raw: result });
     }
   };
 
   const handleClear = (e) => {
     e.stopPropagation();
     setQuery('');
-    setResults([]);
+    setNominatimResults([]);
     setLocalResults([]);
     if (onSelect) onSelect(null);
   };
@@ -162,10 +125,14 @@ export default function LocationSearch({ onSelect, placeholder = "Enter your cit
     }
   };
 
-  // Combine local + Google results (deduplicated)
-  const googleCityNames = results.map(r => r.structured_formatting?.main_text || r.description.split(',')[0]);
-  const filteredLocal = localResults.filter(city => !googleCityNames.some(g => g.toLowerCase() === city.toLowerCase()));
-  const showDropdown = isOpen && (!query || filteredLocal.length > 0 || results.length > 0);
+  // Combine: local cities first, then Nominatim (deduplicated)
+  const nomCityNames = nominatimResults.map(r =>
+    (r.address?.city || r.address?.town || r.display_name.split(',')[0]).toLowerCase()
+  );
+  const filteredLocal = localResults.filter(city =>
+    !nomCityNames.includes(city.toLowerCase())
+  );
+  const showDropdown = isOpen && (!query || filteredLocal.length > 0 || nominatimResults.length > 0);
 
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
@@ -230,26 +197,27 @@ export default function LocationSearch({ onSelect, placeholder = "Enter your cit
             </button>
           ))}
 
-          {/* Google Maps results */}
-          {results.map((result, idx) => (
-            <button
-              key={`gmap-${idx}`}
-              type="button"
-              onClick={() => handleSelect(result)}
-              className="w-full text-left px-4 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 last:border-b-0 transition-colors"
-            >
-              <MapPin size={14} className="text-slate-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                  {result.structured_formatting?.main_text || result.description.split(',')[0]}
-                </p>
-                <p className="text-xs text-slate-400 truncate">{result.description}</p>
-              </div>
-            </button>
-          ))}
+          {/* Nominatim results */}
+          {nominatimResults.map((result, idx) => {
+            const city = result.address?.city || result.address?.town || result.address?.village || result.display_name.split(',')[0];
+            return (
+              <button
+                key={`nom-${idx}`}
+                type="button"
+                onClick={() => handleSelectNominatim(result)}
+                className="w-full text-left px-4 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 last:border-b-0 transition-colors"
+              >
+                <MapPin size={14} className="text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{city}</p>
+                  <p className="text-xs text-slate-400 truncate">{result.display_name}</p>
+                </div>
+              </button>
+            );
+          })}
 
           {/* No results */}
-          {query && query.length >= 2 && results.length === 0 && filteredLocal.length === 0 && !isLoading && (
+          {query && query.length >= 2 && nominatimResults.length === 0 && filteredLocal.length === 0 && !isLoading && (
             <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">
               No cities found for &quot;{query}&quot;
             </div>

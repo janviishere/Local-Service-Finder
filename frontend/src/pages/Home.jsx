@@ -65,8 +65,7 @@ function AnimatedCounter({ target, suffix = "", prefix = "" }) {
   );
 }
 
-/* ─── Static Data ─── */
-const SERVICES = [
+const STATIC_SERVICES = [
   { id: "electrician",    icon: <Zap size={28} />,        label: "Electrician",       desc: "Wiring, fans, switchboards",  from: "₹299", rating: 4.8, slug: "electrician",    color: "#F59E0B", bg: "#FEF3C7" },
   { id: "plumber",        icon: <Droplets size={28} />,   label: "Plumber",           desc: "Leaks, pipes, fittings",      from: "₹199", rating: 4.9, slug: "plumber",        color: "#3B82F6", bg: "#DBEAFE" },
   { id: "house-cleaning", icon: <HomeIcon size={28} />,       label: "House Cleaning",    desc: "Deep clean & sanitise",       from: "₹899", rating: 4.9, slug: "house-cleaning", color: "#10B981", bg: "#D1FAE5" },
@@ -78,6 +77,25 @@ const SERVICES = [
   { id: "beauty",         icon: <Scissors size={28} />,   label: "Beauty & Salon",    desc: "Hair, makeup, facial",        from: "₹299", rating: 4.9, slug: "beauty-salon",   color: "#EC4899", bg: "#FCE7F3" },
   { id: "moving",         icon: <Package size={28} />,    label: "Moving & Packing",  desc: "Home shifting, transport",    from: "₹999", rating: 4.6, slug: "moving-packing", color: "#0EA5E9", bg: "#E0F2FE" },
 ];
+
+const getCategoryStyle = (slug) => {
+  const styles = {
+    'electrician': { color: "#F59E0B", bg: "#FEF3C7", icon: <Zap size={28} /> },
+    'plumber': { color: "#3B82F6", bg: "#DBEAFE", icon: <Droplets size={28} /> },
+    'house-cleaning': { color: "#10B981", bg: "#D1FAE5", icon: <HomeIcon size={28} /> },
+    'cleaning': { color: "#10B981", bg: "#D1FAE5", icon: <HomeIcon size={28} /> },
+    'ac-repair': { color: "#06B6D4", bg: "#CFFAFE", icon: <Wind size={28} /> },
+    'painting': { color: "#8B5CF6", bg: "#EDE9FE", icon: <Paintbrush size={28} /> },
+    'carpentry': { color: "#92400E", bg: "#FEF3C7", icon: <Hammer size={28} /> },
+    'pest-control': { color: "#DC2626", bg: "#FEE2E2", icon: <Bug size={28} /> },
+    'appliance': { color: "#6366F1", bg: "#EEF2FF", icon: <Tv size={28} /> },
+    'beauty': { color: "#EC4899", bg: "#FCE7F3", icon: <Scissors size={28} /> },
+    'moving': { color: "#0EA5E9", bg: "#E0F2FE", icon: <Package size={28} /> },
+    'security': { color: "#16A34A", bg: "#DCFCE7", icon: <Shield size={28} /> },
+    'landscaping': { color: "#65A30D", bg: "#ECFCCB", icon: <Tv size={28} /> }, // fallback icon
+  };
+  return styles[slug] || { color: "#2563EB", bg: "#DBEAFE", icon: <Star size={28} /> };
+};
 
 const WHY_CHOOSE = [
   { icon: <Shield size={32} />,        title: "Verified Professionals",  desc: "Every professional is background-checked, ID-verified, and skill-tested before joining our platform.",                    color: "#2563EB", bg: "rgba(37,99,235,0.1)"  },
@@ -182,6 +200,7 @@ function LoadingScreen({ onDone }) {
 export default function Home() {
   const [service, setService] = useState("");
   const [categories, setCategories] = useState([]);
+  const [displayServices, setDisplayServices] = useState(STATIC_SERVICES);
   const [loading, setLoading] = useState(() => !sessionStorage.getItem('homeLoaded'));
   const handleLoadingDone = () => {
     setLoading(false);
@@ -204,15 +223,43 @@ export default function Home() {
   const textSec  = isDark ? "var(--text-secondary)": "#475569";
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchCategoriesAndServices = async () => {
       try {
-        const data = await api.get("/categories");
-        setCategories(data.slice(0, 10));
+        const [catsRes, servsRes] = await Promise.all([
+          api.get("/categories"),
+          api.get("/services")
+        ]);
+        setCategories(catsRes.slice(0, 10));
+
+        if (servsRes && servsRes.length > 0) {
+          const mappedReal = servsRes.slice(0, 10).map(s => {
+            const style = getCategoryStyle(s.category?.slug);
+            return {
+              id: s.id.toString(),
+              icon: style.icon,
+              label: s.title,
+              desc: s.description || (s.category?.name || "Premium service"),
+              from: s.price,
+              rating: s.rating > 0 ? s.rating.toFixed(1) : 5.0,
+              slug: s.category?.slug || 'electrician',
+              color: style.color,
+              bg: style.bg
+            };
+          });
+          
+          // Merge real with static to always show a full grid
+          const merged = [...mappedReal];
+          const needed = 10 - merged.length;
+          if (needed > 0) {
+            merged.push(...STATIC_SERVICES.slice(0, needed));
+          }
+          setDisplayServices(merged);
+        }
       } catch (e) {
-        console.error("Failed to fetch categories", e);
+        console.error("Failed to fetch data for home", e);
       }
     };
-    fetchCategories();
+    fetchCategoriesAndServices();
   }, []);
 
   const handleSearch = useCallback(() => {
@@ -258,7 +305,7 @@ export default function Home() {
         </motion.div>
 
         {/* Floating service icons */}
-        {SERVICES.slice(0, 6).map((s, i) => (
+        {displayServices.slice(0, 6).map((s, i) => (
           <motion.div
             key={s.id}
             className="absolute z-10 hidden lg:flex items-center justify-center w-14 h-14 rounded-2xl text-white shadow-2xl"
@@ -413,7 +460,7 @@ export default function Home() {
           </FadeIn>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
-            {SERVICES.map((svc, i) => (
+            {displayServices.map((svc, i) => (
               <FadeIn key={svc.id} delay={i * 0.06}>
                 <Link
                   to={`/services?category=${svc.slug}`}
@@ -427,9 +474,9 @@ export default function Home() {
                   >
                     {svc.icon}
                   </div>
-                  <div className="text-center">
-                    <p className="font-bold text-sm mb-0.5" style={{ color: textPri }}>{svc.label}</p>
-                    <p className="text-xs mb-2" style={{ color: textSec }}>{svc.desc}</p>
+                  <div className="text-center w-full px-1">
+                    <p className="font-bold text-sm mb-0.5 truncate" style={{ color: textPri }}>{svc.label}</p>
+                    <p className="text-xs mb-2 truncate" style={{ color: textSec }}>{svc.desc}</p>
                     <div className="flex items-center justify-center gap-2 text-xs">
                       <span className="font-semibold text-royal-blue">From {svc.from}</span>
                     </div>

@@ -11,6 +11,9 @@ import categoryRoutes from './routes/categories.js';
 import locationRoutes from './routes/location.js';
 import favoritesRoutes from './routes/favorites.js';
 import chatRoutes from './routes/chat.js';
+import providerRoutes from './routes/providers.js';
+import paymentRoutes from './routes/payments.js';
+import adminRoutes from './routes/admin.js';
 import prisma from './prismaClient.js';
 
 dotenv.config();
@@ -74,6 +77,9 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/location', locationRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/providers', providerRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' });

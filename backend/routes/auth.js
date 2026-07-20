@@ -31,7 +31,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, providerProfileComplete: false }
     });
   } catch (error) {
     console.error(error);
@@ -53,11 +53,18 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
+    // Check if provider has completed onboarding
+    let providerProfileComplete = true;
+    if (user.role === 'provider') {
+      const profile = await prisma.providerProfile.findUnique({ where: { userId: user.id } });
+      providerProfileComplete = !!profile;
+    }
+
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, address: user.address, city: user.city }
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, address: user.address, city: user.city, providerProfileComplete }
     });
   } catch (error) {
     console.error(error);
@@ -75,7 +82,14 @@ router.get('/me', verifyToken, async (req, res) => {
       }
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+
+    let providerProfileComplete = true;
+    if (user.role === 'provider') {
+      const profile = await prisma.providerProfile.findUnique({ where: { userId: user.id } });
+      providerProfileComplete = !!profile;
+    }
+
+    res.json({ ...user, providerProfileComplete });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }

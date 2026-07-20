@@ -86,12 +86,8 @@ export function LocationProvider({ children }) {
         async (pos) => {
           try {
             const { latitude, longitude } = pos.coords;
-            let loc;
-            try {
-              loc = await reverseGeocodeGoogle(latitude, longitude);
-            } catch {
-              loc = await reverseGeocodeNominatim(latitude, longitude);
-            }
+            // Use Nominatim for reverse geocoding (no API key needed)
+            const loc = await reverseGeocodeNominatim(latitude, longitude);
             setLocation(loc);
             resolve(loc);
           } catch (err) {

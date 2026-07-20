@@ -23,9 +23,17 @@ export default function Login() {
     setLoading(true);
     
     try {
-      await login(email, password);
+      const data = await login(email, password);
       addToast('Logged in successfully', 'success');
-      navigate(from, { replace: true });
+      
+      let redirectPath = from;
+      if (data.user.role === 'admin') {
+        redirectPath = '/admin/dashboard';
+      } else if (data.user.role === 'provider') {
+        redirectPath = data.user.providerProfileComplete ? '/provider/dashboard' : '/provider/onboarding';
+      }
+      
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       addToast(error.message || 'Login failed. Please check your credentials.', 'error');
     } finally {

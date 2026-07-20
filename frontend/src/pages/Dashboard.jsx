@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 import { LogOut, User, MapPin, Calendar, Clock, Star, Edit, CheckCircle, XCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import ChatWindow from '../components/ChatWindow';
 import BookingTimeline from '../components/BookingTimeline';
+import PaymentModal from '../components/PaymentModal';
 
 export default function Dashboard() {
   const { user, logout, updateProfile } = useAuth();
   const { addToast } = useToast();
+
+  // Redirect providers to their dedicated dashboard
+  if (user?.role === 'provider') {
+    if (user?.providerProfileComplete === false) {
+      return <Navigate to="/provider/onboarding" replace />;
+    }
+    return <Navigate to="/provider/dashboard" replace />;
+  }
   
   const [bookings, setBookings] = useState([]);
-  const [services, setServices] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [activeTab, setActiveTab] = useState('bookings'); // bookings, services, profile, favorites
-  const [activeChat, setActiveChat] = useState(null); // active booking ID for chat
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeChat, setActiveChat] = useState(null);
+  const [paymentBooking, setPaymentBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ name: user?.name, phone: user?.phone || '', city: user?.city || '', address: user?.address || '' });
+
 
   useEffect(() => {
     fetchData();
@@ -31,10 +42,7 @@ export default function Dashboard() {
       const bData = await api.get('/bookings');
       setBookings(bData);
       
-      if (user?.role === 'provider') {
-        const sData = await api.get('/services/my-services');
-        setServices(sData);
-      } else if (user?.role === 'customer') {
+      if (user?.role === 'customer') {
         const fData = await api.get('/favorites');
         setFavorites(fData);
       }
@@ -68,6 +76,7 @@ export default function Dashboard() {
   if (loading) return <div className="min-h-screen pt-28 flex justify-center"><div className="animate-spin rounded-full h-12 w-12 border-4 border-royal-blue border-t-transparent"></div></div>;
 
   return (
+    <>
     <div className="min-h-screen pt-28 pb-20 px-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-6xl mx-auto space-y-8">
         
@@ -178,10 +187,18 @@ export default function Dashboard() {
                         {user?.role === 'customer' && booking.status === 'Upcoming' && (
                           <button onClick={() => updateBookingStatus(booking.id, 'Cancelled')} className="w-full py-2 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50">Cancel Booking</button>
                         )}
+                        {user?.role === 'customer' && ['Confirmed', 'In Progress', 'Completed'].includes(booking.status) && (
+                          <button
+                            onClick={() => setPaymentBooking(booking)}
+                            className="w-full py-2 bg-emerald/10 text-emerald rounded-lg text-sm font-bold hover:bg-emerald/20 border border-emerald/20 transition-all"
+                          >
+                            💳 Pay Now
+                          </button>
+                        )}
                         {user?.role === 'customer' && booking.status === 'Completed' && (
                           <button className="w-full py-2 bg-royal-blue/10 text-royal-blue rounded-lg text-sm font-bold">Leave Review</button>
                         )}
-                        
+
                         <button 
                           onClick={() => setActiveChat(activeChat === booking.id ? null : booking.id)}
                           className="w-full py-2 border border-royal-blue text-royal-blue rounded-lg text-sm font-bold hover:bg-royal-blue/5"
@@ -307,5 +324,15 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+
+    {/* Payment Modal */}
+    {paymentBooking && (
+      <PaymentModal
+        booking={paymentBooking}
+        onClose={() => setPaymentBooking(null)}
+        onSuccess={() => { setPaymentBooking(null); fetchData(); }}
+      />
+    )}
+    </>
   );
 }

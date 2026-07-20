@@ -10,11 +10,14 @@ import Booking from './pages/Booking'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
+import ProviderOnboarding from './pages/ProviderOnboarding'
+import ProviderDashboard from './pages/ProviderDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import ToastProvider from './components/Toast'
 
-// Pages that should hide the Navbar and Footer (full-screen auth pages)
-const AUTH_PAGES = ['/login', '/signup'];
+// Pages that should hide the Navbar and Footer (full-screen auth/onboarding pages)
+const AUTH_PAGES = ['/login', '/signup', '/provider/onboarding', '/provider/dashboard', '/admin/dashboard'];
 
 function ScrollProgress() {
   const barRef = useRef(null);
@@ -70,6 +73,21 @@ function AppContent() {
           <Route path="/dashboard" element={
             <ProtectedRoute allowedRoles={['customer', 'provider']}>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/provider/onboarding" element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderOnboarding />
+            </ProtectedRoute>
+          } />
+          <Route path="/provider/dashboard" element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
             </ProtectedRoute>
           } />
         </Routes>
