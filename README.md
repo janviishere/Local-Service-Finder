@@ -256,3 +256,8 @@ GET /api/bookings
 - Service Analytics
 
 ---
+<div align="center">
+
+Made with ❤️ using MERN Stack
+
+</div>
